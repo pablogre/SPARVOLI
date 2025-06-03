@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2 class="mb-4">Consulta de Turnos</h2>
+<form method="post">
+  <div class="mb-3">
+    <label for="fecha" class="form-label">Elegí una fecha:</label>
+    <input type="text" id="fecha" name="fecha" class="form-control" required>
+  </div>
+  <button type="submit" class="btn btn-primary">Ver Turnos</button>
+</form>
+
+<hr>
+<div id="turnos-container" style="display: none;"></div>
+  {% if fecha %}
+    <h4>Turnos para el {{ fecha }}</h4>
+
+    <div class="row">
+      <div class="col-md-3">
+        <h5>Disponibles</h5>
+        {% if disponibles %}
+          <ul class="list-group">
+            {% for t in disponibles %}
+              <li class="list-group-item">{{ t.turno_str }}</li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p>No hay turnos disponibles.</p>
+        {% endif %}
+      </div>
+
+      <div class="col-md-9">
+          <h5>Reservados</h5>
+          {% if reservados %}
+              <table class="table table-striped">
+              <thead>
+                  <tr>
+                  <th>Hora</th>
+                  <th>Paciente</th>
+                  <th>Obra Social</th>
+                  <th>Teléfono</th>
+                  <th>Email</th>
+                  <th>Acción</th>
+                  </tr>
+              </thead>
+              <tbody>
+                  {% for turno in reservados %}
+                  <tr>
+                  <td>{{ turno.turno_str }}</td>
+                  <td>{{ turno.paciente }}</td>
+                  <td>{{ turno.o_social }}</td>
+                  <td>{{ turno.telefono }}</td>
+                  <td>{{ turno.email }}</td>
+                  <td>
+                      <form method="post" action="/cancelar" onsubmit="return confirm('¿Estás seguro de cancelar este turno?');">
+                      <input type="hidden" name="turno_id" value="{{ turno.id }}">
+                      <button class="btn btn-danger btn-sm">Cancelar</button>
+                      </form>
+                  </td>
+                  </tr>
+                  {% endfor %}
+              </tbody>
+              </table>
+          {% else %}
+              <p>No hay turnos reservados.</p>
+          {% endif %}
+      </div>
+    </div>
+  {% endif %}
+</div>
+
+<!-- <script>
+  flatpickr("#fecha", { dateFormat: "Y-m-d" });
+</script> -->
+
+<script>
+  flatpickr("#fecha", {
+    dateFormat: "Y-m-d",
+    onChange: function(selectedDates, dateStr) {
+      const turnosDiv = document.getElementById("turnos-container");
+      if (dateStr) {
+        turnosDiv.style.display = "block";
+      } else {
+        turnosDiv.style.display = "none";
+      }
+    }
+  });
+</script>
+
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            {% for category, message in messages %}
+            Swal.fire({
+                icon: '{{ category }}',
+                title: '{{ message }}',
+                showConfirmButton: false,
+                timer: 2000
+            });
+            {% endfor %}
+        });
+        </script>
+    {% endif %}
+{% endwith %}
+
+{% endblock %}
