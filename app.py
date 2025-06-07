@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, redirect, flash, url_for
-import mysql.connector
+import pymysql
 from datetime import datetime, timedelta, date
 import re
 from twilio.rest import Client
@@ -13,14 +13,26 @@ app = Flask(__name__)
 
 app.secret_key = 'clave_secreta_segura'
 
+load_dotenv()  # <-- Esto carga las variables del .env
 
 # Configuración de la base de datos
-DB_CONFIG = {
+""" DB_CONFIG = {
     'host': 'localhost',
     'user': 'root',
     'password': '',
     'database': 'sparvoli'
-}
+} """
+
+conexion = pymysql.connect(
+    host=os.getenv("DB_HOST"),
+    user=os.getenv("DB_USER"),
+    password=os.getenv("DB_PASSWORD"),
+    database=os.getenv("DB_NAME"),
+    port=int(os.getenv("DB_PORT", 3306)),
+    charset='utf8mb4',
+    cursorclass=pymysql.cursors.DictCursor
+)
+
 
 def enviar_mensage():
     load_dotenv()  # <-- Esto carga las variables del .env
@@ -56,8 +68,15 @@ def enviar_whatsapp(paciente, telefono, fecha, hora):
         print("Error al enviar WhatsApp:", e)
 
 def get_db_connection():
-    return mysql.connector.connect(**DB_CONFIG)
-
+    return pymysql.connect(
+        host=os.getenv("DB_HOST"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD"),
+        database=os.getenv("DB_NAME"),
+        port=int(os.getenv("DB_PORT", 3306)),
+        charset='utf8mb4',
+        cursorclass=pymysql.cursors.DictCursor
+    )
 
 def formatear_numero_argentino(numero):
     """
@@ -84,17 +103,17 @@ def generar_turnos(fecha):
     hora_fin = datetime.strptime("13:00", "%H:%M") if dia_semana == 1 else datetime.strptime("14:00", "%H:%M")
     intervalo = timedelta(minutes=20)
 
-    conn = mysql.connector.connect(**DB_CONFIG)
+    conn = get_db_connection()
     cursor = conn.cursor()
 
     hora_actual = hora_inicio
     while hora_actual < hora_fin:
-        hora_str = hora_actual.time()  # 👈 Esto es clave (ya no lo formateás como string)
+        hora_str = hora_actual.strftime("%H:%M")  # <-- Convertir a string explícitamente
         cursor.execute("""
-            SELECT COUNT(*) FROM turnos
+            SELECT COUNT(*) as cantidad FROM turnos
             WHERE id_profesional = %s AND dia = %s AND turno = %s
         """, (id_profesional, fecha, hora_str))
-        if cursor.fetchone()[0] == 0:
+        if cursor.fetchone()['cantidad'] == 0:
             cursor.execute("""
                 INSERT INTO turnos (id_profesional, dia, turno)
                 VALUES (%s, %s, %s)
@@ -145,7 +164,7 @@ def enviar_sms(nombre, telefono, fecha, hora):
 @app.route("/", methods=["GET", "POST"])
 def index():
     conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor()
 
     turnos = []
     dia = None
@@ -185,7 +204,7 @@ def index():
                 cursor.close()
                 conn.close()
                 conn = get_db_connection()
-                cursor = conn.cursor(dictionary=True)
+                cursor = conn.cursor()
 
                 # Re-definir la función con nuevo cursor
                 def consultar_turnos():
@@ -240,16 +259,16 @@ def reservar():
     # 1. Buscar el turno para obtener fecha y hora antes de actualizar
     cursor.execute("SELECT dia, turno FROM turnos WHERE id = %s", (turno_id,))
     turno_data = cursor.fetchone()
-    dia = turno_data[0].strftime("%d/%m/%Y")
+    dia = turno_data['dia'].strftime("%d/%m/%Y")
     # turno_data[1] es timedelta, por ejemplo: 2:20:00
-    horas, resto = divmod(turno_data[1].seconds, 3600)
+    horas, resto = divmod(turno_data['turno'].seconds, 3600)
     minutos = resto // 60
     hora = f"{horas:02d}:{minutos:02d}"
 
 
     if turno_data:
-        fecha = turno_data[0].strftime("%Y-%m-%d")  # Formato YYYY-MM-DD
-        hora = str(turno_data[1])[:4]     # Formato HH:MM
+        fecha = turno_data['dia'].strftime("%Y-%m-%d")  # Formato YYYY-MM-DD
+        hora = str(turno_data['turno'])[:4]     # Formato HH:MM
     else:
         flash("Turno no encontrado", "error")
         return redirect(url_for("index"))
@@ -281,7 +300,7 @@ def reservar():
 @app.route("/consulta", methods=["GET", "POST"])
 def consulta():
     conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor()
     disponibles = []
     reservados = []
     fecha = None
@@ -362,6 +381,6 @@ def cancelar():
 
 
 if __name__ == "__main__":
-     port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
     #app.run(debug=True, host='0.0.0.0', port=5002)
