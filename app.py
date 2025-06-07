@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 import os
 
 
+
 app = Flask(__name__)
 
 app.secret_key = 'clave_secreta_segura'
