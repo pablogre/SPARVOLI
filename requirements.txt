@@ -2,3 +2,4 @@ Flask
 PyMySQL
 twilio
 python-dotenv
+gunicorn
