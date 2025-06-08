@@ -174,42 +174,17 @@ def index():
         hoy = date.today().isoformat()
         ahora = datetime.now().time()
         dia_semana = datetime.strptime(dia, "%Y-%m-%d").weekday()
+        print("hoy:", hoy)
         
-        # ✅ **NUEVA VALIDACIÓN: Verificar si la fecha es anterior a hoy**
-        if dia < hoy:
-            mensaje = "No se pueden reservar turnos para fechas pasadas."
-
-        # Si es sábado o domingo, no hay turnos
-        if dia_semana in (5, 6):
-            mensaje = "No hay turnos disponibles para este día."
+        # ✅ **NUEVA VALIDACIÓN: Verificar si la fecha es anterior al 3 de julio de 2025**
+        fecha_limite = "2025-07-03"
+        if dia < fecha_limite:
+            mensaje = "No se pueden reservar turnos para fechas anteriores al 3 de julio de 2025."
         else:
-            def consultar_turnos():
-                if dia == hoy:
-                    cursor.execute("""
-                        SELECT * FROM turnos 
-                        WHERE paciente = '' AND dia = %s AND turno > %s
-                    """, (dia, ahora))
-                else:
-                    cursor.execute("""
-                        SELECT * FROM turnos 
-                        WHERE paciente = '' AND dia = %s
-                    """, (dia,))
-                return cursor.fetchall()
-
-            # Consultar turnos existentes
-            turnos = consultar_turnos()
-
-            # Si no hay, generar y volver a consultar
-            if not turnos:
-                generar_turnos(dia)
-
-                # Cerrar y reabrir conexión/cursor para evitar caché
-                cursor.close()
-                conn.close()
-                conn = get_db_connection()
-                cursor = conn.cursor()
-
-                # Re-definir la función con nuevo cursor
+            # Si es sábado o domingo, no hay turnos
+            if dia_semana in (5, 6):
+                mensaje = "No hay turnos disponibles para este día."
+            else:
                 def consultar_turnos():
                     if dia == hoy:
                         cursor.execute("""
@@ -223,25 +198,52 @@ def index():
                         """, (dia,))
                     return cursor.fetchall()
 
+                # Consultar turnos existentes
                 turnos = consultar_turnos()
 
+                # Si no hay, generar y volver a consultar
                 if not turnos:
-                    if dia == hoy:
-                        mensaje = "Ya pasaron todos los turnos disponibles para hoy."
-                    else:
-                        mensaje = "No hay turnos disponibles para este día."
-                else:
-                    mensaje = None
+                    generar_turnos(dia)
 
-        # Formatear hora para mostrar
-        for t in turnos:
-            try:
-                t['turno_str'] = t['turno'].strftime("%H:%M")
-            except:
-                total_seg = t['turno'].seconds if hasattr(t['turno'], 'seconds') else 0
-                horas = total_seg // 3600
-                minutos = (total_seg % 3600) // 60
-                t['turno_str'] = f"{horas:02d}:{minutos:02d}"
+                    # Cerrar y reabrir conexión/cursor para evitar caché
+                    cursor.close()
+                    conn.close()
+                    conn = get_db_connection()
+                    cursor = conn.cursor()
+
+                    # Re-definir la función con nuevo cursor
+                    def consultar_turnos():
+                        if dia == hoy:
+                            cursor.execute("""
+                                SELECT * FROM turnos 
+                                WHERE paciente = '' AND dia = %s AND turno > %s
+                            """, (dia, ahora))
+                        else:
+                            cursor.execute("""
+                                SELECT * FROM turnos 
+                                WHERE paciente = '' AND dia = %s
+                            """, (dia,))
+                        return cursor.fetchall()
+
+                    turnos = consultar_turnos()
+
+                    if not turnos:
+                        if dia == hoy:
+                            mensaje = "Ya pasaron todos los turnos disponibles para hoy."
+                        else:
+                            mensaje = "No hay turnos disponibles para este día."
+                    else:
+                        mensaje = None
+
+            # Formatear hora para mostrar
+            for t in turnos:
+                try:
+                    t['turno_str'] = t['turno'].strftime("%H:%M")
+                except:
+                    total_seg = t['turno'].seconds if hasattr(t['turno'], 'seconds') else 0
+                    horas = total_seg // 3600
+                    minutos = (total_seg % 3600) // 60
+                    t['turno_str'] = f"{horas:02d}:{minutos:02d}"
 
     cursor.close()
     conn.close()
