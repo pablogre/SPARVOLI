@@ -11,6 +11,15 @@
 </form>
 
 <hr>
+
+<!-- ✅ NUEVO: Mostrar mensaje de error/validación -->
+{% if mensaje %}
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        <strong>Atención:</strong> {{ mensaje }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+{% endif %}
+
 <div id="turnos-container" style="display: none;"></div>
   {% if fecha %}
     <h4>Turnos para el {{ fecha }}</h4>

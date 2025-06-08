@@ -174,6 +174,10 @@ def index():
         hoy = date.today().isoformat()
         ahora = datetime.now().time()
         dia_semana = datetime.strptime(dia, "%Y-%m-%d").weekday()
+        
+        # ✅ **NUEVA VALIDACIÓN: Verificar si la fecha es anterior a hoy**
+        if dia < hoy:
+            mensaje = "No se pueden reservar turnos para fechas pasadas."
 
         # Si es sábado o domingo, no hay turnos
         if dia_semana in (5, 6):
@@ -308,23 +312,11 @@ def consulta():
         fecha = request.form["fecha"]
         hoy = date.today().isoformat()
         ahora = datetime.now().time()
-
-        # Consultar turnos disponibles según la fecha
-        if fecha == hoy:
-            cursor.execute("""
-                SELECT * FROM turnos 
-                WHERE dia = %s AND paciente = '' AND turno > %s
-            """, (fecha, ahora))
+          # ✅ **NUEVA VALIDACIÓN: Verificar si la fecha es anterior a hoy**
+        if fecha < hoy:
+            mensaje = "No se pueden consultar turnos para fechas pasadas."
         else:
-            cursor.execute("""
-                SELECT * FROM turnos 
-                WHERE dia = %s AND paciente = ''
-            """, (fecha,))
-        disponibles = cursor.fetchall()
-
-        # Si no hay turnos generados, los crea
-        if not disponibles:
-            generar_turnos(fecha)
+            # Consultar turnos disponibles según la fecha
             if fecha == hoy:
                 cursor.execute("""
                     SELECT * FROM turnos 
@@ -337,20 +329,35 @@ def consulta():
                 """, (fecha,))
             disponibles = cursor.fetchall()
 
-        # Consultar turnos reservados
-        cursor.execute("""
-            SELECT * FROM turnos 
-            WHERE dia = %s AND paciente != ''
-        """, (fecha,))
-        reservados = cursor.fetchall()
+            # Si no hay turnos generados, los crea
+            if not disponibles:
+                generar_turnos(fecha)
+                if fecha == hoy:
+                    cursor.execute("""
+                        SELECT * FROM turnos 
+                        WHERE dia = %s AND paciente = '' AND turno > %s
+                    """, (fecha, ahora))
+                else:
+                    cursor.execute("""
+                        SELECT * FROM turnos 
+                        WHERE dia = %s AND paciente = ''
+                    """, (fecha,))
+                disponibles = cursor.fetchall()
 
-        # Formatear horas para mostrar en HTML
-        for lst in (disponibles, reservados):
-            for t in lst:
-                total_sec = t['turno'].seconds
-                horas = total_sec // 3600
-                minutos = (total_sec % 3600) // 60
-                t['turno_str'] = f"{horas:02d}:{minutos:02d}"
+            # Consultar turnos reservados
+            cursor.execute("""
+                SELECT * FROM turnos 
+                WHERE dia = %s AND paciente != ''
+            """, (fecha,))
+            reservados = cursor.fetchall()
+
+            # Formatear horas para mostrar en HTML
+            for lst in (disponibles, reservados):
+                for t in lst:
+                    total_sec = t['turno'].seconds
+                    horas = total_sec // 3600
+                    minutos = (total_sec % 3600) // 60
+                    t['turno_str'] = f"{horas:02d}:{minutos:02d}"
 
         cursor.close()
         conn.close()
