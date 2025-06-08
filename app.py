@@ -99,7 +99,7 @@ def generar_turnos(fecha):
         return
 
     hora_inicio = datetime.strptime("08:00", "%H:%M")
-    hora_fin = datetime.strptime("13:00", "%H:%M") if dia_semana == 1 else datetime.strptime("14:00", "%H:%M")
+    hora_fin = datetime.strptime("13:00", "%H:%M") if dia_semana == 1 else datetime.strptime("14:20", "%H:%M")
     intervalo = timedelta(minutes=20)
 
     conn = get_db_connection()
