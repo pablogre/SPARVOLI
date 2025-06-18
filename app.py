@@ -97,22 +97,24 @@ def generar_turnos(fecha):
 
     # 🚫 No generar si es viernes
     if dia_semana == 4:
+        print("❌ Viernes: no se generan turnos.")
         return
 
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # 🔒 Verificar si la fecha está completamente o parcialmente bloqueada
+    # 🔒 Verificar si hay bloqueo para esa fecha
     cursor.execute("SELECT hora_desde FROM fechas_bloqueadas WHERE fecha = %s", (fecha,))
     bloqueo = cursor.fetchone()
-    
-    # Si está bloqueada sin especificar hora, se bloquea todo el día
-    if bloqueo and bloqueo['hora_desde'] is None:
-        cursor.close()
-        conn.close()
-        print("🔒 Fecha completamente bloqueada, no se generan turnos:", fecha)
-        return    
 
+    hora_bloqueada = None
+    if bloqueo and bloqueo['hora_desde'] is not None:
+        if isinstance(bloqueo['hora_desde'], str):
+            hora_bloqueada = datetime.strptime(bloqueo['hora_desde'], "%H:%M:%S").time()
+        else:
+            hora_bloqueada = bloqueo['hora_desde']
+
+    # 🕒 Definir hora inicio y fin de turnos
     hora_inicio = datetime.strptime("08:00", "%H:%M")
     hora_fin = datetime.strptime("13:00", "%H:%M") if dia_semana == 1 else datetime.strptime("14:20", "%H:%M")
     intervalo = timedelta(minutes=20)
@@ -122,19 +124,17 @@ def generar_turnos(fecha):
     while hora_actual < hora_fin:
         hora_str = hora_actual.strftime("%H:%M")
 
-        # ⏱️ Si hay hora_desde en el bloqueo, saltear turnos dentro del rango bloqueado
-        if bloqueo and bloqueo['hora_desde']:
-            hora_bloqueada = bloqueo['hora_desde']
-            if hora_actual.time() >= hora_bloqueada:
-                print(f"⏩ Turno {hora_str} bloqueado por horario desde {hora_bloqueada}")
-                hora_actual += intervalo
-                continue
+        # ⏱️ Saltar si la hora está bloqueada (parcial)
+        if hora_bloqueada and hora_actual.time() >= hora_bloqueada:
+            print(f"⏩ Turno {hora_str} bloqueado desde {hora_bloqueada}")
+            hora_actual += intervalo
+            continue
 
         cursor.execute("""
             SELECT COUNT(*) as cantidad FROM turnos
             WHERE id_profesional = %s AND dia = %s AND turno = %s
         """, (id_profesional, fecha, hora_str))
-        
+
         if cursor.fetchone()['cantidad'] == 0:
             cursor.execute("""
                 INSERT INTO turnos (id_profesional, dia, turno)
@@ -200,12 +200,11 @@ def index():
         dia_semana = datetime.strptime(dia, "%Y-%m-%d").weekday()
         print("hoy:", hoy)
         
-        # ✅ **NUEVA VALIDACIÓN: Verificar si la fecha es anterior al 3 de julio de 2025**
+        # ✅ Validación: no reservar antes del 3 de julio de 2025
         fecha_limite = "2025-07-03"
         if dia < fecha_limite:
             mensaje = "No se pueden reservar turnos para fechas anteriores al 3 de julio de 2025."
         else:
-            # Si es sábado o domingo, no hay turnos
             if dia_semana in (5, 6):
                 mensaje = "No hay turnos disponibles para este día."
             else:
@@ -222,20 +221,16 @@ def index():
                         """, (dia,))
                     return cursor.fetchall()
 
-                # Consultar turnos existentes
                 turnos = consultar_turnos()
 
-                # Si no hay, generar y volver a consultar
                 if not turnos:
                     generar_turnos(dia)
 
-                    # Cerrar y reabrir conexión/cursor para evitar caché
                     cursor.close()
                     conn.close()
                     conn = get_db_connection()
                     cursor = conn.cursor()
 
-                    # Re-definir la función con nuevo cursor
                     def consultar_turnos():
                         if dia == hoy:
                             cursor.execute("""
@@ -259,7 +254,14 @@ def index():
                     else:
                         mensaje = None
 
-            # Formatear hora para mostrar
+                # 🔒 Aplicar filtro por hora bloqueada
+                cursor.execute("SELECT hora_desde FROM fechas_bloqueadas WHERE fecha = %s", (dia,))
+                bloqueo = cursor.fetchone()
+                if bloqueo and bloqueo['hora_desde']:
+                    hora_bloqueada = bloqueo['hora_desde']
+                    turnos = [t for t in turnos if t['turno'] < hora_bloqueada]
+
+            # ⏱️ Formatear hora
             for t in turnos:
                 try:
                     t['turno_str'] = t['turno'].strftime("%H:%M")
@@ -272,6 +274,7 @@ def index():
     cursor.close()
     conn.close()
     return render_template("index.html", turnos=turnos, fecha=dia, mensaje=mensaje)
+
 
 
 @app.route("/reservar", methods=["POST"])
@@ -333,16 +336,17 @@ def consulta():
     disponibles = []
     reservados = []
     fecha = None
+    mensaje = None
 
     if request.method == "POST":
         fecha = request.form["fecha"]
         hoy = date.today().isoformat()
         ahora = datetime.now().time()
-          # ✅ **NUEVA VALIDACIÓN: Verificar si la fecha es anterior a hoy**
+
         if fecha < hoy:
             mensaje = "No se pueden consultar turnos para fechas pasadas."
         else:
-            # Consultar turnos disponibles según la fecha
+            # Turnos disponibles
             if fecha == hoy:
                 cursor.execute("""
                     SELECT * FROM turnos 
@@ -355,29 +359,21 @@ def consulta():
                 """, (fecha,))
             disponibles = cursor.fetchall()
 
-            # Si no hay turnos generados, los crea
-            if not disponibles:
-                generar_turnos(fecha)
-                if fecha == hoy:
-                    cursor.execute("""
-                        SELECT * FROM turnos 
-                        WHERE dia = %s AND paciente = '' AND turno > %s
-                    """, (fecha, ahora))
-                else:
-                    cursor.execute("""
-                        SELECT * FROM turnos 
-                        WHERE dia = %s AND paciente = ''
-                    """, (fecha,))
-                disponibles = cursor.fetchall()
+            # 🔁 Filtrar los que están dentro del rango bloqueado
+            cursor.execute("SELECT hora_desde FROM fechas_bloqueadas WHERE fecha = %s", (fecha,))
+            bloqueo = cursor.fetchone()
+            if bloqueo and bloqueo["hora_desde"]:
+                hora_bloqueada = datetime.strptime(str(bloqueo["hora_desde"]), "%H:%M:%S").time()
+                disponibles = [t for t in disponibles if t["turno"] < hora_bloqueada]
 
-            # Consultar turnos reservados
+            # Turnos reservados
             cursor.execute("""
                 SELECT * FROM turnos 
                 WHERE dia = %s AND paciente != ''
             """, (fecha,))
             reservados = cursor.fetchall()
 
-            # Formatear horas para mostrar en HTML
+            # Formatear horas
             for lst in (disponibles, reservados):
                 for t in lst:
                     total_sec = t['turno'].seconds
@@ -387,11 +383,12 @@ def consulta():
 
         cursor.close()
         conn.close()
-        return render_template("consulta.html", disponibles=disponibles, reservados=reservados, fecha=fecha)
+        return render_template("consulta.html", disponibles=disponibles, reservados=reservados, fecha=fecha, mensaje=mensaje)
 
+    # ⚠️ Este return FALTABA para método GET
     cursor.close()
     conn.close()
-    return render_template("consulta.html", disponibles=[], reservados=[], fecha=None)
+    return render_template("consulta.html", disponibles=[], reservados=[], fecha=None, mensaje=None)
 
 
 
@@ -429,7 +426,22 @@ def bloquear_fechas():
 
             while fecha_actual <= fecha_fin_dt:
                 fechas_a_bloquear.append(fecha_actual.date())
-                cursor.execute("INSERT IGNORE INTO fechas_bloqueadas (fecha, hora_desde) VALUES (%s, %s)", (fecha_actual.date(), hora_desde))
+                cursor.execute("INSERT IGNORE INTO fechas_bloqueadas (fecha, hora_desde) VALUES (%s, %s)", (fecha_actual.date(), hora_desde if hora_desde else None))
+                
+                # 🔥 Si se especificó una hora, borrar los turnos desde esa hora en adelante
+                if hora_desde:
+                    cursor.execute("""
+                        DELETE FROM turnos
+                        WHERE dia = %s AND turno >= %s
+                    """, (fecha_actual.date(), hora_desde))
+
+                else:
+                    # 🔥 Si no se especificó hora, eliminar todos los turnos del día
+                    cursor.execute("""
+                        DELETE FROM turnos
+                        WHERE dia = %s
+                    """, (fecha_actual.date(),))
+                
                 fecha_actual += timedelta(days=1)
 
             conn.commit()
