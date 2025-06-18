@@ -124,7 +124,7 @@ def generar_turnos(fecha):
 
         # ⏱️ Si hay hora_desde en el bloqueo, saltear turnos dentro del rango bloqueado
         if bloqueo and bloqueo['hora_desde']:
-            hora_bloqueada = datetime.strptime(bloqueo['hora_desde'], "%H:%M").time()
+            hora_bloqueada = bloqueo['hora_desde']
             if hora_actual.time() >= hora_bloqueada:
                 print(f"⏩ Turno {hora_str} bloqueado por horario desde {hora_bloqueada}")
                 hora_actual += intervalo
