@@ -99,38 +99,50 @@ def generar_turnos(fecha):
     if dia_semana == 4:
         return
 
-    # 🚫 No generar si la fecha está bloqueada
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT 1 FROM fechas_bloqueadas WHERE fecha = %s", (fecha,))
-    if cursor.fetchone():
+    # 🔒 Verificar si la fecha está completamente o parcialmente bloqueada
+    cursor.execute("SELECT hora_desde FROM fechas_bloqueadas WHERE fecha = %s", (fecha,))
+    bloqueo = cursor.fetchone()
+    
+    # Si está bloqueada sin especificar hora, se bloquea todo el día
+    if bloqueo and bloqueo['hora_desde'] is None:
         cursor.close()
         conn.close()
-        print("🔒 Fecha bloqueada, no se generan turnos:", fecha)
+        print("🔒 Fecha completamente bloqueada, no se generan turnos:", fecha)
         return    
 
     hora_inicio = datetime.strptime("08:00", "%H:%M")
     hora_fin = datetime.strptime("13:00", "%H:%M") if dia_semana == 1 else datetime.strptime("14:20", "%H:%M")
     intervalo = timedelta(minutes=20)
 
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
     hora_actual = hora_inicio
+
     while hora_actual < hora_fin:
-        hora_str = hora_actual.strftime("%H:%M")  # <-- Convertir a string explícitamente
+        hora_str = hora_actual.strftime("%H:%M")
+
+        # ⏱️ Si hay hora_desde en el bloqueo, saltear turnos dentro del rango bloqueado
+        if bloqueo and bloqueo['hora_desde']:
+            hora_bloqueada = datetime.strptime(bloqueo['hora_desde'], "%H:%M").time()
+            if hora_actual.time() >= hora_bloqueada:
+                print(f"⏩ Turno {hora_str} bloqueado por horario desde {hora_bloqueada}")
+                hora_actual += intervalo
+                continue
+
         cursor.execute("""
             SELECT COUNT(*) as cantidad FROM turnos
             WHERE id_profesional = %s AND dia = %s AND turno = %s
         """, (id_profesional, fecha, hora_str))
+        
         if cursor.fetchone()['cantidad'] == 0:
             cursor.execute("""
                 INSERT INTO turnos (id_profesional, dia, turno)
                 VALUES (%s, %s, %s)
             """, (id_profesional, fecha, hora_str))
+            print("✅ Turno generado:", id_profesional, fecha, hora_str)
+
         hora_actual += intervalo
-        print(id_profesional, fecha, hora_str)
 
     conn.commit()
     cursor.close()
@@ -403,6 +415,7 @@ def bloquear_fechas():
     if request.method == "POST":
         fecha_inicio = request.form.get("fecha_inicio")
         fecha_fin = request.form.get("fecha_fin") or fecha_inicio
+        hora_desde = request.form.get("hora_desde") or None
 
         try:
             fecha_inicio_dt = datetime.strptime(fecha_inicio, "%Y-%m-%d")
@@ -416,7 +429,7 @@ def bloquear_fechas():
 
             while fecha_actual <= fecha_fin_dt:
                 fechas_a_bloquear.append(fecha_actual.date())
-                cursor.execute("INSERT IGNORE INTO fechas_bloqueadas (fecha) VALUES (%s)", (fecha_actual.date(),))
+                cursor.execute("INSERT IGNORE INTO fechas_bloqueadas (fecha, hora_desde) VALUES (%s, %s)", (fecha_actual.date(), hora_desde))
                 fecha_actual += timedelta(days=1)
 
             conn.commit()
