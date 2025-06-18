@@ -95,8 +95,20 @@ def generar_turnos(fecha):
     id_profesional = 1
     dia_semana = datetime.strptime(fecha, "%Y-%m-%d").weekday()
 
+    # 🚫 No generar si es viernes
     if dia_semana == 4:
         return
+
+    # 🚫 No generar si la fecha está bloqueada
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT 1 FROM fechas_bloqueadas WHERE fecha = %s", (fecha,))
+    if cursor.fetchone():
+        cursor.close()
+        conn.close()
+        print("🔒 Fecha bloqueada, no se generan turnos:", fecha)
+        return    
 
     hora_inicio = datetime.strptime("08:00", "%H:%M")
     hora_fin = datetime.strptime("13:00", "%H:%M") if dia_semana == 1 else datetime.strptime("14:20", "%H:%M")
@@ -386,6 +398,63 @@ def cancelar():
     flash("Turno cancelado correctamente", "success")
     return redirect(url_for("consulta"))
 
+@app.route("/bloquear_fechas", methods=["GET", "POST"])
+def bloquear_fechas():
+    if request.method == "POST":
+        fecha_inicio = request.form.get("fecha_inicio")
+        fecha_fin = request.form.get("fecha_fin") or fecha_inicio
+
+        try:
+            fecha_inicio_dt = datetime.strptime(fecha_inicio, "%Y-%m-%d")
+            fecha_fin_dt = datetime.strptime(fecha_fin, "%Y-%m-%d")
+
+            conn = get_db_connection()
+            cursor = conn.cursor()
+
+            fecha_actual = fecha_inicio_dt
+            fechas_a_bloquear = []
+
+            while fecha_actual <= fecha_fin_dt:
+                fechas_a_bloquear.append(fecha_actual.date())
+                cursor.execute("INSERT IGNORE INTO fechas_bloqueadas (fecha) VALUES (%s)", (fecha_actual.date(),))
+                fecha_actual += timedelta(days=1)
+
+            conn.commit()
+            cursor.close()
+            conn.close()
+
+            if fechas_a_bloquear:
+                flash(f"Se bloquearon {len(fechas_a_bloquear)} fechas.", "success")
+            else:
+                flash("No se bloquearon fechas nuevas.", "warning")
+        except Exception as e:
+            print("ERROR AL BLOQUEAR:", e)
+            flash("Error al bloquear las fechas.", "danger")
+
+        return redirect(url_for("bloquear_fechas"))
+
+    # GET: Mostrar fechas bloqueadas
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT fecha FROM fechas_bloqueadas ORDER BY fecha")
+    fechas_bloqueadas = cursor.fetchall()
+    cursor.close()
+    conn.close()
+
+    return render_template("bloquear_fechas.html", fechas_bloqueadas=fechas_bloqueadas)
+
+
+@app.route("/eliminar_fecha_bloqueada", methods=["POST"])
+def eliminar_fecha_bloqueada():
+    fecha = request.form.get("fecha")
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM fechas_bloqueadas WHERE fecha = %s", (fecha,))
+    conn.commit()
+    cursor.close()
+    conn.close()
+    flash(f"Fecha {fecha} eliminada correctamente.", "success")
+    return redirect(url_for("bloquear_fechas"))
 
 
 if __name__ == "__main__":
