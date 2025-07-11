@@ -14,7 +14,7 @@ app.secret_key = 'clave_secreta_segura'
 
 load_dotenv()  # <-- Esto carga las variables del .env
 
-# Configuración de la base de datos
+# Configuración de la base de datos no se usa
 """ DB_CONFIG = {
     'host': 'localhost',
     'user': 'root',
