@@ -32,6 +32,7 @@ conexion = pymysql.connect(
     cursorclass=pymysql.cursors.DictCursor
 )
 
+####### enviar_mensage #######
 
 def enviar_mensage():
     load_dotenv()  # <-- Esto carga las variables del .env
@@ -47,6 +48,7 @@ def enviar_mensage():
     )
     print(message.sid)
     return 
+
 
 def enviar_whatsapp(paciente, telefono, fecha, hora):
     load_dotenv()  # <-- Esto carga las variables del .env
@@ -264,7 +266,7 @@ def index():
     return render_template("index.html", turnos=turnos, fecha=dia, mensaje=mensaje)
 
 
-
+############## reservar turno 
 @app.route("/reservar", methods=["POST"])
 def reservar():
     turno_id = request.form["turno_id"]
