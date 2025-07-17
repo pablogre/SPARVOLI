@@ -12,7 +12,14 @@ app = Flask(__name__)
 
 app.secret_key = 'clave_secreta_segura'
 
-load_dotenv()  # <-- Esto carga las variables del .env
+def clean_env(var_name: str) -> str:
+    raw = os.getenv(var_name, "")
+    # Elimina comillas simples o dobles al inicio y al final
+    return raw.strip('\'"')
+
+
+load_dotenv()  # Carga las variables del archivo .env
+
 
 # Configuración de la base de datos no se usa
 """ DB_CONFIG = {
@@ -157,10 +164,16 @@ def enviar_sms(nombre, telefono, fecha, hora):
         from dotenv import load_dotenv
         load_dotenv()  # Carga las variables del archivo .env
 
+    '''
     account_sid = os.getenv("TWILIO_ACCOUNT_SID")
     auth_token = os.getenv("TWILIO_AUTH_TOKEN")
     twilio_number = os.getenv("TWILIO_PHONE_NUMBER")
-   
+    '''
+    # Limpia posibles comillas agregadas por Railway
+    account_sid = clean_env("TWILIO_ACCOUNT_SID")
+    auth_token = clean_env("TWILIO_AUTH_TOKEN")
+    twilio_number = clean_env("TWILIO_PHONE_NUMBER")
+
     print("🧪 SID:", account_sid)
     print("🧪 Token is set:", "✅" if auth_token else "❌")
     print("🧪 From Number:", twilio_number)
@@ -187,6 +200,8 @@ def enviar_sms(nombre, telefono, fecha, hora):
 
     except Exception as e:
         print("❌ Error al enviar el SMS:", e)
+
+
 
 ##################################################################################################################################
 #
