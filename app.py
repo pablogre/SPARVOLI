@@ -491,9 +491,13 @@ def test_twilio_auth():
         return f"❌ Error de autenticación: {e}"
 
 
-@app.route("/hola")
-def hola():
-    return "Hola mundo"
+@app.route("/debug_vars")
+def debug_vars():
+    return {
+        "TWILIO_ACCOUNT_SID": os.getenv("TWILIO_ACCOUNT_SID"),
+        "TWILIO_AUTH_TOKEN": "✅ Presente" if os.getenv("TWILIO_AUTH_TOKEN") else "❌ Faltante"
+    }
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
