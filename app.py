@@ -152,11 +152,18 @@ def generar_turnos(fecha):
 
 
 def enviar_sms(nombre, telefono, fecha, hora):
-    load_dotenv()  # Carga las variables del archivo .env
-
+   
+    if not os.getenv("TWILIO_ACCOUNT_SID"):
+        from dotenv import load_dotenv
+        load_dotenv()  # Carga las variables del archivo .env
+        
     account_sid = os.getenv("TWILIO_ACCOUNT_SID")
     auth_token = os.getenv("TWILIO_AUTH_TOKEN")
     twilio_number = os.getenv("TWILIO_PHONE_NUMBER")
+   
+    print("🧪 SID:", account_sid)
+    print("🧪 Token is set:", "✅" if auth_token else "❌")
+    print("🧪 From Number:", twilio_number)
 
     if not all([account_sid, auth_token, twilio_number]):
         print("❌ Error: Faltan variables de entorno.")
