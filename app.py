@@ -156,7 +156,7 @@ def enviar_sms(nombre, telefono, fecha, hora):
     if not os.getenv("TWILIO_ACCOUNT_SID"):
         from dotenv import load_dotenv
         load_dotenv()  # Carga las variables del archivo .env
-        
+
     account_sid = os.getenv("TWILIO_ACCOUNT_SID")
     auth_token = os.getenv("TWILIO_AUTH_TOKEN")
     twilio_number = os.getenv("TWILIO_PHONE_NUMBER")
@@ -478,6 +478,22 @@ def eliminar_fecha_bloqueada():
     flash(f"Fecha {fecha} eliminada correctamente.", "success")
     return redirect(url_for("bloquear_fechas"))
 
+@app.route("/test_twilio_auth")
+def test_twilio_auth():
+    account_sid = os.getenv("TWILIO_ACCOUNT_SID")
+    auth_token = os.getenv("TWILIO_AUTH_TOKEN")
+
+    try:
+        client = Client(account_sid, auth_token)
+        incoming_numbers = client.incoming_phone_numbers.list(limit=1)
+        return f"✅ Conexión exitosa. Número: {incoming_numbers[0].phone_number}" if incoming_numbers else "✅ Autenticado, pero sin números asociados."
+    except Exception as e:
+        return f"❌ Error de autenticación: {e}"
+
+
+@app.route("/hola")
+def hola():
+    return "Hola mundo"
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
