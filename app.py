@@ -495,9 +495,12 @@ def eliminar_fecha_bloqueada():
 
 @app.route("/test_twilio_auth")
 def test_twilio_auth():
-    account_sid = os.getenv("TWILIO_ACCOUNT_SID")
-    auth_token = os.getenv("TWILIO_AUTH_TOKEN")
-
+    """ account_sid = os.getenv("TWILIO_ACCOUNT_SID")
+    auth_token = os.getenv("TWILIO_AUTH_TOKEN") """
+     # Limpia posibles comillas agregadas por Railway
+    account_sid = clean_env("TWILIO_ACCOUNT_SID")
+    auth_token = clean_env("TWILIO_AUTH_TOKEN")
+    
     try:
         client = Client(account_sid, auth_token)
         incoming_numbers = client.incoming_phone_numbers.list(limit=1)
