@@ -207,13 +207,7 @@ def enviar_sms(nombre, telefono, fecha, hora):
 #
 #                                 RUTAS DEL SISTEMA
 ##################################################################################################################################
-@app.route("/fix-auth")
-def fix_auth():
-    from fix_auth import run_fix
-    run_fix()
-    return "✅ Fix ejecutado"
 
-'''
 @app.route("/", methods=["GET", "POST"])
 def index():
     conn = get_db_connection()
@@ -292,7 +286,7 @@ def index():
     cursor.close()
     conn.close()
     return render_template("index.html", turnos=turnos, fecha=dia, mensaje=mensaje)
-'''
+
 
 ############## reservar turno 
 @app.route("/reservar", methods=["POST"])

@@ -3,3 +3,4 @@ PyMySQL
 twilio
 python-dotenv
 gunicorn
+cryptography
