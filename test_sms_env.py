@@ -13,11 +13,11 @@ client = Client(account_sid, auth_token)
 
 try:
     message = client.messages.create(
-        body="Hola Ceci la verdad que no supe más nada de vos y solo quiero saber si estás bien",
+        body="Hola Ceci la verdad que no supe más nada de vos y solo quiero saber si estás bien me podes contestar",
         from_=twilio_number,
         to=test_number
     )
     print("Mensaje enviado, SID:", message.sid)
-    
+    print("Hola Ceci la verdad que no supe más nada de vos y solo quiero saber si estás bien me podes contestar")
 except Exception as e:
     print("Error enviando mensaje:", e)
