@@ -789,7 +789,7 @@ def test_twilio_auth():
 
 @app.route("/debug_sendgrid")
 def debug_sendgrid():
-     """Debug completo de SendGrid para Railway"""
+    """Debug completo de SendGrid para Railway"""
     
     # Buscar todas las posibles variables
     sendgrid_vars = {}
@@ -808,20 +808,22 @@ def debug_sendgrid():
     cleaned_key = clean_env("SENDGRID_API_KEY")
     
     return {
-        "variables_encontradas": sendgrid_vars,
-        "clean_env_result": {
-            "exists": "✅" if cleaned_key else "❌",
-            "length": len(cleaned_key) if cleaned_key else 0,
-            "preview": cleaned_key[:15] + "..." if cleaned_key else "None"
-        },
-        "from_email": "consultoriosparvoli@gmail.com",
-        "railway_env": "RAILWAY" in os.environ,
-        "all_env_vars_count": len(os.environ),
-        "sendgrid_related_vars": [key for key in os.environ.keys() if 'SENDGRID' in key.upper()]
+            "variables_encontradas": sendgrid_vars,
+            "clean_env_result": {
+                "exists": "✅" if cleaned_key else "❌",
+                "length": len(cleaned_key) if cleaned_key else 0,
+                "preview": cleaned_key[:15] + "..." if cleaned_key else "None"
+            },
+            "from_email": "consultoriosparvoli@gmail.com",
+            "railway_env": "RAILWAY" in os.environ,
+            "all_env_vars_count": len(os.environ),
+            "sendgrid_related_vars": [key for key in os.environ.keys() if 'SENDGRID' in key.upper()]
+        }
+
 
 @app.route("/test_sendgrid")
 def test_sendgrid():
-   """Prueba SendGrid con la nueva función"""
+    """Prueba SendGrid con la nueva función"""
     try:
         # CAMBIA este email por el tuyo para la prueba
         resultado = send_email_sendgrid(
@@ -844,11 +846,12 @@ def test_sendgrid():
             "resultado": resultado,
             "timestamp": datetime.now().isoformat()
         }
+
     except Exception as e:
         return {
             "status": "❌ Error en la prueba",
             "error": str(e),
-
+        }
 
 @app.route("/debug_vars")
 def debug_vars():
