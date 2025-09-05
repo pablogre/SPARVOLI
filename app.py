@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, flash, url_for
+from flask import Flask, render_template, request, redirect, flash, url_for, jsonify
 import secrets
 # Al principio del archivo, después de los imports existentes
 #from email_functions import enviar_email_confirmacion, enviar_email_recordatorio, procesar_recordatorios, generar_token_cancelacion
@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 import os
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, Email, To, Content
+
 
 
 
@@ -855,12 +856,14 @@ def test_sendgrid():
 
 @app.route("/debug_raw_env")
 def debug_raw_env():
-    return {
+    return jsonify({
         "SENDGRID_API_KEY": os.environ.get("SENDGRID_API_KEY", "NOT_FOUND"),
-        "DB_HOST": os.environ.get("DB_HOST", "NOT_FOUND"),
+        "DB_HOST": os.environ.get("DB_HOST", "NOT_FOUND"), 
         "RAILWAY_ENVIRONMENT": os.environ.get("RAILWAY_ENVIRONMENT", "NOT_FOUND"),
-        "total_env_vars": len(os.environ)
-    }
+        "total_env_vars": len(os.environ),
+        "RAILWAY_in_env": "RAILWAY" in os.environ,
+        "all_keys_sample": list(os.environ.keys())[:10]
+    })
 
 
 @app.route("/debug_vars")
