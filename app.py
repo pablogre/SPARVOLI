@@ -789,37 +789,65 @@ def test_twilio_auth():
 
 @app.route("/debug_sendgrid")
 def debug_sendgrid():
-    """Debug para verificar configuración de SendGrid"""
-    sendgrid_key = os.getenv("SENDGRID_API_KEY")
+     """Debug completo de SendGrid para Railway"""
+    
+    # Buscar todas las posibles variables
+    sendgrid_vars = {}
+    possible_names = ["SENDGRID_API_KEY", "SENDGRID_KEY", "SENDGRID", "SENDGRID_API"]
+    
+    for name in possible_names:
+        value = os.getenv(name)
+        sendgrid_vars[name] = {
+            "exists": "✅" if value else "❌",
+            "length": len(value) if value else 0,
+            "starts_with_SG": "✅" if value and value.startswith("SG.") else "❌",
+            "preview": value[:15] + "..." if value and len(value) > 15 else value
+        }
+    
+    # Función clean_env
+    cleaned_key = clean_env("SENDGRID_API_KEY")
+    
     return {
-        "SENDGRID_API_KEY_exists": "✅" if sendgrid_key else "❌",
-        "SENDGRID_API_KEY_prefix": sendgrid_key[:15] + "..." if sendgrid_key else "No existe",
-        "FROM_EMAIL": "consultoriosparvoli@gmail.com",
-        "FROM_EMAIL_VERIFIED": "✅ Verificado en SendGrid"
-    }
+        "variables_encontradas": sendgrid_vars,
+        "clean_env_result": {
+            "exists": "✅" if cleaned_key else "❌",
+            "length": len(cleaned_key) if cleaned_key else 0,
+            "preview": cleaned_key[:15] + "..." if cleaned_key else "None"
+        },
+        "from_email": "consultoriosparvoli@gmail.com",
+        "railway_env": "RAILWAY" in os.environ,
+        "all_env_vars_count": len(os.environ),
+        "sendgrid_related_vars": [key for key in os.environ.keys() if 'SENDGRID' in key.upper()]
 
 @app.route("/test_sendgrid")
 def test_sendgrid():
-    """Prueba SendGrid con email real"""
+   """Prueba SendGrid con la nueva función"""
     try:
-        # Cambiar por tu email para prueba
+        # CAMBIA este email por el tuyo para la prueba
         resultado = send_email_sendgrid(
-            "consultoriosparvoli@gmail.com",  # CAMBIA ESTO POR TU EMAIL
-            "Prueba SendGrid - Dr. Sparvoli",
+            "consultoriosparvoli@gmail.com",  # ← CAMBIA POR TU EMAIL
+            "🚀 Prueba SendGrid PRODUCCIÓN - Dr. Sparvoli",
             """
             <html>
-            <body>
-                <h2>Prueba de SendGrid</h2>
-                <p>Este es un email de prueba desde SendGrid.</p>
-                <p>Si recibes esto, la configuración está funcionando correctamente.</p>
+            <body style="font-family: Arial, sans-serif; padding: 20px;">
+                <h2 style="color: #28a745;">🎉 SendGrid funcionando en Railway!</h2>
+                <p>Este email se envió correctamente desde Railway usando variables de entorno.</p>
+                <p><strong>✅ La configuración está funcionando perfectamente!</strong></p>
+                <hr>
+                <p><small>Sistema de turnos Dr. Sparvoli - Powered by Railway</small></p>
             </body>
             </html>
             """
         )
-        return "✅ Email de prueba enviado con SendGrid" if resultado else "❌ Error enviando con SendGrid"
+        return {
+            "status": "✅ Email enviado correctamente" if resultado else "❌ Error al enviar",
+            "resultado": resultado,
+            "timestamp": datetime.now().isoformat()
+        }
     except Exception as e:
-        return f"❌ Error: {e}"
-
+        return {
+            "status": "❌ Error en la prueba",
+            "error": str(e),
 
 
 @app.route("/debug_vars")
