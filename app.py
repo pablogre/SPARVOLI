@@ -227,7 +227,7 @@ def enviar_email_confirmacion(nombre, email, fecha, hora, turno_id):
         
 
         smtp_server = "smtp.gmail.com"
-        smtp_port = 587
+        smtp_port = 465
         email_user = "consultoriosparvoli@gmail.com"
         email_password = "rter jhov vucq zztn"
         
@@ -330,7 +330,7 @@ def debug_email_vars():
         "SMTP_USER_hardcoded": "consultoriosparvoli@gmail.com",
         "SMTP_PASSWORD_hardcoded": "rter jhov vucq zztn",
         "SMTP_SERVER_hardcoded": "smtp.gmail.com",
-        "SMTP_PORT_hardcoded": "587",
+        "SMTP_PORT_hardcoded": "465",
         "VARIABLES_DESDE_RAILWAY": {
             "SMTP_USER_raw": os.getenv("SMTP_USER"),
             "SMTP_PASSWORD_exists": "SÍ" if os.getenv("SMTP_PASSWORD") else "NO",
