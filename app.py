@@ -790,36 +790,19 @@ def test_twilio_auth():
 
 @app.route("/debug_sendgrid")
 def debug_sendgrid():
-    """Debug completo de SendGrid para Railway"""
+    """Debug completo - MUESTRA VARIABLES RAW"""
     
-    # Buscar todas las posibles variables
-    sendgrid_vars = {}
-    possible_names = ["SENDGRID_API_KEY", "SENDGRID_KEY", "SENDGRID", "SENDGRID_API"]
+    raw_sendgrid = os.environ.get("SENDGRID_API_KEY", "NOT_FOUND")
     
-    for name in possible_names:
-        value = os.getenv(name)
-        sendgrid_vars[name] = {
-            "exists": "✅" if value else "❌",
-            "length": len(value) if value else 0,
-            "starts_with_SG": "✅" if value and value.startswith("SG.") else "❌",
-            "preview": value[:15] + "..." if value and len(value) > 15 else value
-        }
-    
-    # Función clean_env
-    cleaned_key = clean_env("SENDGRID_API_KEY")
-    
-    return {
-            "variables_encontradas": sendgrid_vars,
-            "clean_env_result": {
-                "exists": "✅" if cleaned_key else "❌",
-                "length": len(cleaned_key) if cleaned_key else 0,
-                "preview": cleaned_key[:15] + "..." if cleaned_key else "None"
-            },
-            "from_email": "consultoriosparvoli@gmail.com",
-            "railway_env": "RAILWAY" in os.environ,
-            "all_env_vars_count": len(os.environ),
-            "sendgrid_related_vars": [key for key in os.environ.keys() if 'SENDGRID' in key.upper()]
-        }
+    return jsonify({
+        "SENDGRID_API_KEY": raw_sendgrid,
+        "SENDGRID_EXISTS": "YES" if raw_sendgrid != "NOT_FOUND" else "NO", 
+        "SENDGRID_LENGTH": len(raw_sendgrid) if raw_sendgrid != "NOT_FOUND" else 0,
+        "SENDGRID_STARTS_SG": raw_sendgrid.startswith("SG.") if raw_sendgrid != "NOT_FOUND" else False,
+        "DB_HOST": os.environ.get("DB_HOST", "NOT_FOUND"),
+        "RAILWAY_ENV": os.environ.get("RAILWAY_ENVIRONMENT", "NOT_FOUND"),
+        "total_vars": len(os.environ)
+    })
 
 
 @app.route("/test_sendgrid")
