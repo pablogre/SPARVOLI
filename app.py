@@ -853,15 +853,13 @@ def test_sendgrid():
             "error": str(e),
         }
 
-
 @app.route("/debug_raw_env")
 def debug_raw_env():
     return {
         "SENDGRID_API_KEY": os.environ.get("SENDGRID_API_KEY", "NOT_FOUND"),
         "DB_HOST": os.environ.get("DB_HOST", "NOT_FOUND"),
         "RAILWAY_ENVIRONMENT": os.environ.get("RAILWAY_ENVIRONMENT", "NOT_FOUND"),
-        "total_env_vars": len(os.environ),
-        "first_10_vars": list(os.environ.keys())[:10]
+        "total_env_vars": len(os.environ)
     }
 
 
