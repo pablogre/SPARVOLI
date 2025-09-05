@@ -1,7 +1,4 @@
 from flask import Flask, render_template, request, redirect, flash, url_for
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 import secrets
 # Al principio del archivo, después de los imports existentes
 #from email_functions import enviar_email_confirmacion, enviar_email_recordatorio, procesar_recordatorios, generar_token_cancelacion
@@ -12,6 +9,8 @@ import re
 from twilio.rest import Client
 from dotenv import load_dotenv
 import os
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail, Email, To, Content
 
 
 
@@ -210,51 +209,39 @@ def enviar_sms(nombre, telefono, fecha, hora):
 
 
 
+# Configuración de SendGrid
+def send_email_sendgrid(to_email, subject, html_content):
+    """
+    Envía email usando SendGrid
+    """
+    try:
+        # Configurar SendGrid
+        sg = SendGridAPIClient(api_key=os.getenv('SENDGRID_API_KEY'))
+        
+        # Crear el email
+        from_email = Email("consultoriosparvoli@gmail.com")  # Tu email verificado
+        to_email = To(to_email)
+        content = Content("text/html", html_content)
+        
+        mail = Mail(from_email, to_email, subject, content)
+        
+        # Enviar el email
+        response = sg.client.mail.send.post(request_body=mail.get())
+        
+        print(f"Email enviado exitosamente. Status code: {response.status_code}")
+        return True
+        
+    except Exception as e:
+        print(f"Error enviando email: {str(e)}")
+        return False
 
-
-def generar_token_cancelacion():
-    """Genera un token único para cancelación"""
-    return secrets.token_urlsafe(32)
 
 def enviar_email_confirmacion(nombre, email, fecha, hora, turno_id):
-    """Envía email de confirmación al reservar el turno"""
+    """Envía email de confirmación al reservar el turno usando SendGrid"""
     try:
-        # CAMBIO: Usar SMTP_USER y SMTP_PASSWORD en lugar de EMAIL_USER y EMAIL_PASSWORD
-        """ smtp_server = clean_env("SMTP_SERVER") or "smtp.gmail.com"
-        smtp_port = int(clean_env("SMTP_PORT") or "587")
-        email_user = clean_env("SMTP_USER")  # CAMBIO AQUÍ
-        email_password = clean_env("SMTP_PASSWORD")  # CAMBIO AQUÍ """
+        subject = "Confirmación de Turno - Dr. Sparvoli"
         
-
-        smtp_server = "smtp.gmail.com"
-        smtp_port = 465
-        email_user = "consultoriosparvoli@gmail.com"
-        email_password = "rter jhov vucq zztn"
-        
-        print("🧪 USANDO VALORES HARDCODEADOS")
-        print(f"Email user: {email_user}")
-        print(f"Password configurado: SI")
-
-
-
-        # Debug detallado
-        print("🔍 DEBUG EMAIL:")
-        print(f"SMTP_SERVER: {smtp_server}")
-        print(f"SMTP_PORT: {smtp_port}")
-        print(f"SMTP_USER: {'✅ Configurado' if email_user else '❌ Vacío'}")
-        print(f"SMTP_PASSWORD: {'✅ Configurado' if email_password else '❌ Vacío'}")
-        
-        if not all([email_user, email_password]):
-            print("❌ Error: Faltan credenciales de email")
-            return False
-
-        # Crear mensaje
-        msg = MIMEMultipart()
-        msg['From'] = email_user
-        msg['To'] = email
-        msg['Subject'] = "Confirmación de Turno - Dr. Sparvoli"
-
-        # [resto del código igual...]
+        # Cuerpo del email usando SendGrid
         cuerpo = f"""
         <html>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
@@ -279,7 +266,7 @@ def enviar_email_confirmacion(nombre, email, fecha, hora, turno_id):
                 </ul>
                 
                 <div style="margin: 30px 0; text-align: center;">
-                    <a href="{os.getenv('BASE_URL', 'http://localhost:5000')}/cancelar_turno/{turno_id}" 
+                    <a href="{os.getenv('BASE_URL', 'https://www.drsparvoli.com')}/cancelar_turno/{turno_id}" 
                        style="background-color: #dc3545; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
                         🗑️ Cancelar Turno
                     </a>
@@ -302,63 +289,28 @@ def enviar_email_confirmacion(nombre, email, fecha, hora, turno_id):
         </html>
         """
         
-        msg.attach(MIMEText(cuerpo, 'html'))
-
-        # Enviar email
-        print("🔄 Intentando conectar a SMTP...")
-        server = smtplib.SMTP(smtp_server, smtp_port)
-        server.starttls()
-        print("🔐 Intentando autenticar...")
-        server.login(email_user, email_password)
-        print("📧 Enviando mensaje...")
-        server.send_message(msg)
-        server.quit()
+        # Enviar usando SendGrid
+        resultado = send_email_sendgrid(email, subject, cuerpo)
         
-        print("✅ Email de confirmación enviado correctamente")
-        return True
+        if resultado:
+            print("✅ Email de confirmación enviado correctamente con SendGrid")
+        else:
+            print("❌ Error enviando email de confirmación con SendGrid")
+        
+        return resultado
         
     except Exception as e:
-        print(f"❌ Error al enviar email de confirmación: {e}")
-        print(f"❌ Tipo de error: {type(e).__name__}")
+        print(f"❌ Error en enviar_email_confirmacion: {e}")
         return False
 
-# También actualizar la ruta de debug
-@app.route("/debug_email_vars")
-def debug_email_vars():
-    return {
-        "HARDCODED_TEST": "Variables hardcodeadas para debugging",
-        "SMTP_USER_hardcoded": "consultoriosparvoli@gmail.com",
-        "SMTP_PASSWORD_hardcoded": "rter jhov vucq zztn",
-        "SMTP_SERVER_hardcoded": "smtp.gmail.com",
-        "SMTP_PORT_hardcoded": "465",
-        "VARIABLES_DESDE_RAILWAY": {
-            "SMTP_USER_raw": os.getenv("SMTP_USER"),
-            "SMTP_PASSWORD_exists": "SÍ" if os.getenv("SMTP_PASSWORD") else "NO",
-            "SMTP_SERVER": os.getenv("SMTP_SERVER"),
-            "SMTP_PORT": os.getenv("SMTP_PORT")
-        }
-    }
+
 
 
 def enviar_email_recordatorio(nombre, email, fecha, hora, turno_id):
-    """Envía email recordatorio 24 horas antes del turno"""
+    """Envía email recordatorio 24 horas antes del turno usando SendGrid"""
     try:
-        # Configuración SMTP
-        smtp_server = os.getenv("SMTP_SERVER", "smtp.gmail.com")
-        smtp_port = int(os.getenv("SMTP_PORT", "587"))
-        email_user = os.getenv("EMAIL_USER")
-        email_password = os.getenv("EMAIL_PASSWORD")
-
-        if not all([email_user, email_password]):
-            print("❌ Error: Faltan credenciales de email")
-            return False
-
-        # Crear mensaje
-        msg = MIMEMultipart()
-        msg['From'] = email_user
-        msg['To'] = email
-        msg['Subject'] = "Recordatorio de Turno - Dr. Sparvoli (Mañana)"
-
+        subject = "Recordatorio de Turno - Dr. Sparvoli (Mañana)"
+        
         # Cuerpo del email
         cuerpo = f"""
         <html>
@@ -385,7 +337,7 @@ def enviar_email_recordatorio(nombre, email, fecha, hora, turno_id):
                 </ul>
                 
                 <div style="margin: 30px 0; text-align: center;">
-                    <a href="{os.getenv('BASE_URL', 'http://localhost:5000')}/cancelar_turno/{turno_id}" 
+                    <a href="{os.getenv('BASE_URL', 'https://www.drsparvoli.com')}/cancelar_turno/{turno_id}" 
                        style="background-color: #dc3545; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
                         🗑️ Cancelar Turno
                     </a>
@@ -400,21 +352,20 @@ def enviar_email_recordatorio(nombre, email, fecha, hora, turno_id):
         </html>
         """
         
-        msg.attach(MIMEText(cuerpo, 'html'))
-
-        # Enviar email
-        server = smtplib.SMTP(smtp_server, smtp_port)
-        server.starttls()
-        server.login(email_user, email_password)
-        server.send_message(msg)
-        server.quit()
+        # Enviar usando SendGrid
+        resultado = send_email_sendgrid(email, subject, cuerpo)
         
-        print("✅ Email recordatorio enviado correctamente")
-        return True
+        if resultado:
+            print("✅ Email recordatorio enviado correctamente con SendGrid")
+        else:
+            print("❌ Error enviando email recordatorio con SendGrid")
+        
+        return resultado
         
     except Exception as e:
-        print(f"❌ Error al enviar email recordatorio: {e}")
+        print(f"❌ Error en enviar_email_recordatorio: {e}")
         return False
+
 
 
 def procesar_recordatorios():
@@ -786,6 +737,42 @@ def test_twilio_auth():
         return f"✅ Conexión exitosa. Número: {incoming_numbers[0].phone_number}" if incoming_numbers else "✅ Autenticado, pero sin números asociados."
     except Exception as e:
         return f"❌ Error de autenticación: {e}"
+
+
+
+@app.route("/debug_sendgrid")
+def debug_sendgrid():
+    """Debug para verificar configuración de SendGrid"""
+    sendgrid_key = os.getenv("SENDGRID_API_KEY")
+    return {
+        "SENDGRID_API_KEY_exists": "✅" if sendgrid_key else "❌",
+        "SENDGRID_API_KEY_prefix": sendgrid_key[:15] + "..." if sendgrid_key else "No existe",
+        "FROM_EMAIL": "consultoriosparvoli@gmail.com",
+        "FROM_EMAIL_VERIFIED": "✅ Verificado en SendGrid"
+    }
+
+@app.route("/test_sendgrid")
+def test_sendgrid():
+    """Prueba SendGrid con email real"""
+    try:
+        # Cambiar por tu email para prueba
+        resultado = send_email_sendgrid(
+            "consultoriosparvoli@gmail.com",  # CAMBIA ESTO POR TU EMAIL
+            "Prueba SendGrid - Dr. Sparvoli",
+            """
+            <html>
+            <body>
+                <h2>Prueba de SendGrid</h2>
+                <p>Este es un email de prueba desde SendGrid.</p>
+                <p>Si recibes esto, la configuración está funcionando correctamente.</p>
+            </body>
+            </html>
+            """
+        )
+        return "✅ Email de prueba enviado con SendGrid" if resultado else "❌ Error enviando con SendGrid"
+    except Exception as e:
+        return f"❌ Error: {e}"
+
 
 
 @app.route("/debug_vars")
