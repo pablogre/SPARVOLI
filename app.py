@@ -219,20 +219,18 @@ def generar_token_cancelacion():
 def enviar_email_confirmacion(nombre, email, fecha, hora, turno_id):
     """Envía email de confirmación al reservar el turno"""
     try:
-        # Usar clean_env como con Twilio
+        # CAMBIO: Usar SMTP_USER y SMTP_PASSWORD en lugar de EMAIL_USER y EMAIL_PASSWORD
         smtp_server = clean_env("SMTP_SERVER") or "smtp.gmail.com"
         smtp_port = int(clean_env("SMTP_PORT") or "587")
-        email_user = clean_env("EMAIL_USER")
-        email_password = clean_env("EMAIL_PASSWORD")
+        email_user = clean_env("SMTP_USER")  # CAMBIO AQUÍ
+        email_password = clean_env("SMTP_PASSWORD")  # CAMBIO AQUÍ
         
         # Debug detallado
         print("🔍 DEBUG EMAIL:")
         print(f"SMTP_SERVER: {smtp_server}")
         print(f"SMTP_PORT: {smtp_port}")
-        print(f"EMAIL_USER: {'✅ Configurado' if email_user else '❌ Vacío'}")
-        print(f"EMAIL_PASSWORD: {'✅ Configurado' if email_password else '❌ Vacío'}")
-        print(f"EMAIL_USER raw: '{os.getenv('EMAIL_USER')}'")
-        print(f"EMAIL_PASSWORD raw: '{os.getenv('EMAIL_PASSWORD')}'")
+        print(f"SMTP_USER: {'✅ Configurado' if email_user else '❌ Vacío'}")
+        print(f"SMTP_PASSWORD: {'✅ Configurado' if email_password else '❌ Vacío'}")
         
         if not all([email_user, email_password]):
             print("❌ Error: Faltan credenciales de email")
@@ -244,7 +242,7 @@ def enviar_email_confirmacion(nombre, email, fecha, hora, turno_id):
         msg['To'] = email
         msg['Subject'] = "Confirmación de Turno - Dr. Sparvoli"
 
-        # Cuerpo del email CON ENLACE DIRECTO AL ID
+        # [resto del código igual...]
         cuerpo = f"""
         <html>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
@@ -312,19 +310,18 @@ def enviar_email_confirmacion(nombre, email, fecha, hora, turno_id):
         print(f"❌ Tipo de error: {type(e).__name__}")
         return False
 
-
-# También agregar esta ruta para debug
+# También actualizar la ruta de debug
 @app.route("/debug_email_vars")
 def debug_email_vars():
     return {
-        "EMAIL_USER_raw": os.getenv("EMAIL_USER"),
-        "EMAIL_USER_clean": clean_env("EMAIL_USER"),
-        "EMAIL_PASSWORD_exists": "✅" if os.getenv("EMAIL_PASSWORD") else "❌",
-        "EMAIL_PASSWORD_clean_exists": "✅" if clean_env("EMAIL_PASSWORD") else "❌",
+        "SMTP_USER_raw": os.getenv("SMTP_USER"),
+        "SMTP_USER_clean": clean_env("SMTP_USER"),
+        "SMTP_PASSWORD_exists": "✅" if os.getenv("SMTP_PASSWORD") else "❌",
+        "SMTP_PASSWORD_clean_exists": "✅" if clean_env("SMTP_PASSWORD") else "❌",
         "SMTP_SERVER": clean_env("SMTP_SERVER") or "smtp.gmail.com",
-        "SMTP_PORT": clean_env("SMTP_PORT") or "587",
-        "ALL_ENV_VARS": dict(os.environ)
+        "SMTP_PORT": clean_env("SMTP_PORT") or "587"
     }
+
 
 def enviar_email_recordatorio(nombre, email, fecha, hora, turno_id):
     """Envía email recordatorio 24 horas antes del turno"""
