@@ -1,5 +1,12 @@
 from flask import Flask, render_template, request, redirect, flash, url_for
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import secrets
+# Al principio del archivo, después de los imports existentes
+#from email_functions import enviar_email_confirmacion, enviar_email_recordatorio, procesar_recordatorios, generar_token_cancelacion
 import pymysql
+import time
 from datetime import datetime, timedelta, date
 import re
 from twilio.rest import Client
@@ -203,6 +210,231 @@ def enviar_sms(nombre, telefono, fecha, hora):
 
 
 
+
+
+def generar_token_cancelacion():
+    """Genera un token único para cancelación"""
+    return secrets.token_urlsafe(32)
+
+def enviar_email_confirmacion(nombre, email, fecha, hora, turno_id):
+    """Envía email de confirmación al reservar el turno"""
+    try:
+        # Configuración SMTP
+        smtp_server = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+        smtp_port = int(os.getenv("SMTP_PORT", "587"))
+        email_user = os.getenv("EMAIL_USER")
+        email_password = os.getenv("EMAIL_PASSWORD")
+        
+        if not all([email_user, email_password]):
+            print("❌ Error: Faltan credenciales de email")
+            return False
+
+        # Crear mensaje
+        msg = MIMEMultipart()
+        msg['From'] = email_user
+        msg['To'] = email
+        msg['Subject'] = "Confirmación de Turno - Dr. Sparvoli"
+
+        # Cuerpo del email CON ENLACE DIRECTO AL ID
+        cuerpo = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h2 style="color: #2c5aa0;">Confirmación de Turno Médico</h2>
+                
+                <p>Estimado/a <strong>{nombre}</strong>,</p>
+                
+                <p>Su turno ha sido <strong>confirmado</strong> con los siguientes datos:</p>
+                
+                <div style="background-color: #f8f9fa; border-left: 4px solid #007bff; padding: 15px; margin: 20px 0;">
+                    <p><strong>📅 Fecha:</strong> {fecha}</p>
+                    <p><strong>🕐 Hora:</strong> {hora} hs</p>
+                    <p><strong>👨‍⚕️ Médico:</strong> Dr. Sparvoli</p>
+                </div>
+                
+                <p><strong>Importante:</strong></p>
+                <ul>
+                    <li>Llegue 10 minutos antes de su turno</li>
+                    <li>Traiga su documento de identidad y obra social</li>
+                    <li>Recibirá un recordatorio 24 horas antes</li>
+                </ul>
+                
+                <div style="margin: 30px 0; text-align: center;">
+                    <a href="{os.getenv('BASE_URL', 'http://localhost:5000')}/cancelar_turno/{turno_id}" 
+                       style="background-color: #dc3545; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
+                        🗑️ Cancelar Turno
+                    </a>
+                </div>
+                
+                <p style="font-size: 12px; color: #666; margin-top: 30px;">
+                    Si necesita reprogramar o tiene consultas, por favor comuníquese al consultorio.<br>
+                    Tel: 4450551 - 3364176855 Este es un email automático, no responda a esta dirección.
+                </p>
+                <div class="mt-3 text-center">
+                    <small>
+                        <a href="https://pablore.com.ar" target="_blank" class="text-muted text-decoration-none" 
+                           style="font-size: 0.75rem;">
+                            Desarrollado por Pablo G. Ré
+                        </a>
+                    </small>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        msg.attach(MIMEText(cuerpo, 'html'))
+
+        # Enviar email
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.starttls()
+        server.login(email_user, email_password)
+        server.send_message(msg)
+        server.quit()
+        
+        print("✅ Email de confirmación enviado correctamente")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error al enviar email de confirmación: {e}")
+        return False
+
+
+
+def enviar_email_recordatorio(nombre, email, fecha, hora, turno_id):
+    """Envía email recordatorio 24 horas antes del turno"""
+    try:
+        # Configuración SMTP
+        smtp_server = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+        smtp_port = int(os.getenv("SMTP_PORT", "587"))
+        email_user = os.getenv("EMAIL_USER")
+        email_password = os.getenv("EMAIL_PASSWORD")
+
+        if not all([email_user, email_password]):
+            print("❌ Error: Faltan credenciales de email")
+            return False
+
+        # Crear mensaje
+        msg = MIMEMultipart()
+        msg['From'] = email_user
+        msg['To'] = email
+        msg['Subject'] = "Recordatorio de Turno - Dr. Sparvoli (Mañana)"
+
+        # Cuerpo del email
+        cuerpo = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h2 style="color: #28a745;">⏰ Recordatorio de Turno</h2>
+                
+                <p>Estimado/a <strong>{nombre}</strong>,</p>
+                
+                <p>Le recordamos que <strong>mañana</strong> tiene turno médico:</p>
+                
+                <div style="background-color: #d4edda; border-left: 4px solid #28a745; padding: 15px; margin: 20px 0;">
+                    <p><strong>📅 Fecha:</strong> {fecha}</p>
+                    <p><strong>🕐 Hora:</strong> {hora} hs</p>
+                    <p><strong>👨‍⚕️ Médico:</strong> Dr. Sparvoli</p>
+                </div>
+                
+                <p><strong>Recuerde:</strong></p>
+                <ul>
+                    <li>✅ Llegar 10 minutos antes</li>
+                    <li>🆔 Traer documento de identidad</li>
+                    <li>💳 Traer credencial de obra social</li>
+                    <li>📋 Si tiene estudios previos, tráigalos</li>
+                </ul>
+                
+                <div style="margin: 30px 0; text-align: center;">
+                    <a href="{os.getenv('BASE_URL', 'http://localhost:5000')}/cancelar_turno/{turno_id}" 
+                       style="background-color: #dc3545; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
+                        🗑️ Cancelar Turno
+                    </a>
+                </div>
+                
+                <p style="font-size: 12px; color: #666; margin-top: 30px;">
+                    Si necesita reagendar, hágalo con anticipación.<br>
+                    Este es un email automático, no responda a esta dirección.
+                </p>
+            </div>
+        </body>
+        </html>
+        """
+        
+        msg.attach(MIMEText(cuerpo, 'html'))
+
+        # Enviar email
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.starttls()
+        server.login(email_user, email_password)
+        server.send_message(msg)
+        server.quit()
+        
+        print("✅ Email recordatorio enviado correctamente")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error al enviar email recordatorio: {e}")
+        return False
+
+
+def procesar_recordatorios():
+    """Procesa y envía recordatorios para turnos del día siguiente"""
+    try:
+        from datetime import datetime, timedelta
+        manana = (datetime.now() + timedelta(days=1)).date()
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Buscar turnos para mañana que tengan email y no se haya enviado recordatorio
+        cursor.execute("""
+            SELECT id, paciente, email, dia, turno, recordatorio_enviado
+            FROM turnos 
+            WHERE dia = %s 
+            AND paciente != '' 
+            AND email IS NOT NULL 
+            AND email != '' 
+            AND (recordatorio_enviado IS NULL OR recordatorio_enviado = 0)
+        """, (manana,))
+        
+        turnos = cursor.fetchall()
+        enviados = 0
+        
+        for turno in turnos:
+            # Formatear hora
+            total_sec = turno['turno'].seconds
+            horas = total_sec // 3600
+            minutos = (total_sec % 3600) // 60
+            hora_str = f"{horas:02d}:{minutos:02d}"
+            
+            fecha_str = turno['dia'].strftime("%d/%m/%Y")
+            
+            if enviar_email_recordatorio(
+                turno['paciente'], 
+                turno['email'], 
+                fecha_str, 
+                hora_str,
+                turno['id']  # Pasamos el ID directamente
+            ):
+                # Marcar como enviado
+                cursor.execute("""
+                    UPDATE turnos SET recordatorio_enviado = 1 WHERE id = %s
+                """, (turno['id'],))
+                enviados += 1
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        print(f"✅ Procesados {enviados} recordatorios de {len(turnos)} turnos")
+        return enviados
+        
+    except Exception as e:
+        print(f"❌ Error procesando recordatorios: {e}")
+        return 0
+
+
 ##################################################################################################################################
 #
 #                                 RUTAS DEL SISTEMA
@@ -326,8 +558,16 @@ def reservar():
     cursor.close()
     conn.close()
 
-    # Enviamos el SMS
-    enviar_sms(paciente, telefono, dia, hora)
+    # Enviamos el SMS lo comento porque no se paga más Twilio
+    #enviar_sms(paciente, telefono, dia, hora)
+
+    #  NUEVO: Enviar EMAIL DE CONFIRMACIÓN
+    if email and email.strip():  # Solo si se proporcionó email
+        try:
+            enviar_email_confirmacion(paciente, email, dia, hora, turno_id)
+            print("❌  enviando email:") 
+        except Exception as e:
+            print(f"❌ Error enviando email: {e}")
 
     """ # 3. Enviar WhatsApp
     print('hora: ', hora)
@@ -515,6 +755,111 @@ def debug_vars():
         "TWILIO_ACCOUNT_SID": os.getenv("TWILIO_ACCOUNT_SID"),
         "TWILIO_AUTH_TOKEN": "✅ Presente" if os.getenv("TWILIO_AUTH_TOKEN") else "❌ Faltante"
     }
+
+
+# Agregar estas rutas a tu app.py después de las rutas existentes
+
+
+
+@app.route("/cancelar_turno/<int:turno_id>", methods=["GET", "POST"])
+def cancelar_turno_simple(turno_id):
+    """Cancela un turno usando directamente el ID"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Buscar el turno por ID
+    cursor.execute("""
+        SELECT id, paciente, dia, turno, email FROM turnos 
+        WHERE id = %s AND paciente != ''
+    """, (turno_id,))
+    
+    turno = cursor.fetchone()
+    
+    if not turno:
+        cursor.close()
+        conn.close()
+        return render_template("cancelacion_resultado.html", 
+                             exito=False, 
+                             mensaje="Turno no encontrado o ya cancelado.")
+    
+    if request.method == "POST":
+        # EJECUTAR LA CONSULTA QUE PEDISTE
+        cursor.execute("""
+            UPDATE turnos SET 
+                paciente='', 
+                o_social='', 
+                telefono='', 
+                email='',
+                token_cancelacion=NULL,
+                recordatorio_enviado=NULL
+            WHERE id = %s
+        """, (turno['id'],))
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        return render_template("cancelacion_resultado.html", 
+                             exito=True, 
+                             mensaje="Su turno ha sido cancelado correctamente.")
+    
+    # GET: Mostrar confirmación
+    # Formatear fecha y hora para mostrar
+    fecha_formateada = turno['dia'].strftime("%d/%m/%Y")
+    total_sec = turno['turno'].seconds
+    horas = total_sec // 3600
+    minutos = (total_sec % 3600) // 60
+    hora_formateada = f"{horas:02d}:{minutos:02d}"
+    
+    cursor.close()
+    conn.close()
+    
+    return render_template("cancelar_turno.html", 
+                         turno=turno,
+                         fecha=fecha_formateada,
+                         hora=hora_formateada,
+                         turno_id=turno_id)
+
+@app.route("/procesar_recordatorios")
+def ejecutar_recordatorios():
+    """Endpoint para procesar recordatorios (usar con cron job)"""
+    enviados = procesar_recordatorios()
+    return f"✅ Recordatorios procesados: {enviados}"
+
+
+@app.route("/test_recordatorio")
+def test_recordatorio():
+    """Prueba manual de recordatorio"""
+    # Cambia estos valores por un turno real de tu BD
+    resultado = enviar_email_recordatorio(
+        "Usuario Prueba",
+        "tu-email@ejemplo.com",  # Cambia por tu email
+        "04/09/2025",
+        "10:00",
+        999  # ID de prueba
+    )
+    return "✅ Recordatorio de prueba enviado" if resultado else "❌ Error enviando recordatorio"
+
+@app.route("/test_email")
+def test_email():
+    """Prueba la configuración de email"""
+    try:
+        # Datos de prueba
+        resultado = enviar_email_confirmacion(
+            "Usuario Prueba",
+            "tu-email@ejemplo.com",  # Cambia por tu email
+            "01/01/2025",
+            "10:00",
+            999
+        )
+        return "✅ Email de prueba enviado" if resultado else "❌ Error enviando email"
+    except Exception as e:
+        return f"❌ Error: {e}"
+
+
+
+
+
 
 
 if __name__ == "__main__":

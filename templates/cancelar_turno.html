@@ -1,0 +1,42 @@
+<!-- templates/cancelar_turno.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <h4 class="mb-0">⚠️ Cancelar Turno</h4>
+                </div>
+                <div class="card-body">
+                    <p>¿Está seguro que desea cancelar el siguiente turno?</p>
+                    
+                    <div class="alert alert-info">
+                        <strong>👤 Paciente:</strong> {{ turno.paciente }}<br>
+                        <strong>📅 Fecha:</strong> {{ fecha }}<br>
+                        <strong>🕐 Hora:</strong> {{ hora }} hs<br>
+                        <strong>👨‍⚕️ Médico:</strong> Dr. Sparvoli
+                    </div>
+                    
+                    <div class="alert alert-warning">
+                        <strong>⚠️ Importante:</strong><br>
+                        • Esta acción no se puede deshacer<br>
+                        • El turno quedará disponible para otros pacientes<br>
+                        • Si desea reagendar, deberá tomar un nuevo turno
+                    </div>
+                    
+                    <form method="post" class="d-grid gap-2">
+                        <button type="submit" class="btn btn-danger btn-lg">
+                            🗑️ Sí, Cancelar Turno
+                        </button>
+                        <button type="button" onclick="window.close()" class="btn btn-secondary">
+                            ← Cerrar
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
