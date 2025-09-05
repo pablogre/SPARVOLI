@@ -220,11 +220,23 @@ def enviar_email_confirmacion(nombre, email, fecha, hora, turno_id):
     """Envía email de confirmación al reservar el turno"""
     try:
         # CAMBIO: Usar SMTP_USER y SMTP_PASSWORD en lugar de EMAIL_USER y EMAIL_PASSWORD
-        smtp_server = clean_env("SMTP_SERVER") or "smtp.gmail.com"
+        """ smtp_server = clean_env("SMTP_SERVER") or "smtp.gmail.com"
         smtp_port = int(clean_env("SMTP_PORT") or "587")
         email_user = clean_env("SMTP_USER")  # CAMBIO AQUÍ
-        email_password = clean_env("SMTP_PASSWORD")  # CAMBIO AQUÍ
+        email_password = clean_env("SMTP_PASSWORD")  # CAMBIO AQUÍ """
         
+
+        smtp_server = "smtp.gmail.com"
+        smtp_port = 587
+        email_user = "consultoriosparvoli@gmail.com"
+        email_password = "rter jhov vucq zztn"
+        
+        print("🧪 USANDO VALORES HARDCODEADOS")
+        print(f"Email user: {email_user}")
+        print(f"Password configurado: SI")
+
+
+
         # Debug detallado
         print("🔍 DEBUG EMAIL:")
         print(f"SMTP_SERVER: {smtp_server}")
@@ -314,12 +326,17 @@ def enviar_email_confirmacion(nombre, email, fecha, hora, turno_id):
 @app.route("/debug_email_vars")
 def debug_email_vars():
     return {
-        "SMTP_USER_raw": os.getenv("SMTP_USER"),
-        "SMTP_USER_clean": clean_env("SMTP_USER"),
-        "SMTP_PASSWORD_exists": "✅" if os.getenv("SMTP_PASSWORD") else "❌",
-        "SMTP_PASSWORD_clean_exists": "✅" if clean_env("SMTP_PASSWORD") else "❌",
-        "SMTP_SERVER": clean_env("SMTP_SERVER") or "smtp.gmail.com",
-        "SMTP_PORT": clean_env("SMTP_PORT") or "587"
+        "HARDCODED_TEST": "Variables hardcodeadas para debugging",
+        "SMTP_USER_hardcoded": "consultoriosparvoli@gmail.com",
+        "SMTP_PASSWORD_hardcoded": "rter jhov vucq zztn",
+        "SMTP_SERVER_hardcoded": "smtp.gmail.com",
+        "SMTP_PORT_hardcoded": "587",
+        "VARIABLES_DESDE_RAILWAY": {
+            "SMTP_USER_raw": os.getenv("SMTP_USER"),
+            "SMTP_PASSWORD_exists": "SÍ" if os.getenv("SMTP_PASSWORD") else "NO",
+            "SMTP_SERVER": os.getenv("SMTP_SERVER"),
+            "SMTP_PORT": os.getenv("SMTP_PORT")
+        }
     }
 
 
