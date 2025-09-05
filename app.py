@@ -212,29 +212,76 @@ def enviar_sms(nombre, telefono, fecha, hora):
 # Configuración de SendGrid
 def send_email_sendgrid(to_email, subject, html_content):
     """
-    Envía email usando SendGrid
+    Envía email usando SendGrid - SOLO variables de entorno
     """
     try:
+        # Intentar múltiples formas de obtener la API key SOLO de variables de entorno
+        api_key = None
+        
+        # Método 1: Variable de entorno limpia
+        api_key = clean_env("SENDGRID_API_KEY")
+        
+        # Método 2: Variable directa si la primera falla
+        if not api_key:
+            api_key = os.getenv("SENDGRID_API_KEY", "").strip().strip('\'"')
+        
+        # Método 3: Verificar si Railway está usando otro nombre
+        if not api_key:
+            api_key = os.getenv("SENDGRID_KEY") or os.getenv("SENDGRID") or os.getenv("SENDGRID_API")
+        
+        # NO MÁS FALLBACKS HARDCODEADOS - Solo variables de entorno
+        
+        # Validaciones
+        if not api_key:
+            raise Exception("❌ No se encontró SENDGRID_API_KEY en variables de entorno")
+        
+        if not api_key.startswith("SG."):
+            raise Exception(f"❌ API Key inválida. Debe empezar con 'SG.' Recibida: {api_key[:10]}...")
+        
+        if len(api_key) < 50:
+            raise Exception(f"❌ API Key muy corta. Longitud: {len(api_key)}")
+        
+        print(f"🔑 API Key encontrada desde variables de entorno: {api_key[:15]}... (longitud: {len(api_key)})")
+        
         # Configurar SendGrid
-        sg = SendGridAPIClient(api_key=os.getenv('SENDGRID_API_KEY'))
+        sg = SendGridAPIClient(api_key=api_key)
         
         # Crear el email
-        from_email = Email("consultoriosparvoli@gmail.com")  # Tu email verificado
-        to_email = To(to_email)
+        from_email = Email("consultoriosparvoli@gmail.com")
+        to_email_obj = To(to_email)
         content = Content("text/html", html_content)
         
-        mail = Mail(from_email, to_email, subject, content)
+        mail = Mail(from_email, to_email_obj, subject, content)
         
         # Enviar el email
         response = sg.client.mail.send.post(request_body=mail.get())
         
-        print(f"Email enviado exitosamente. Status code: {response.status_code}")
-        return True
+        print(f"✅ Email enviado exitosamente")
+        print(f"📊 Status code: {response.status_code}")
+        print(f"📧 De: consultoriosparvoli@gmail.com → Para: {to_email}")
+        print(f"📝 Asunto: {subject}")
+        
+        if response.status_code in [200, 201, 202]:
+            return True
+        else:
+            print(f"⚠️ Código inesperado: {response.status_code}")
+            return False
         
     except Exception as e:
-        print(f"Error enviando email: {str(e)}")
+        print(f"❌ Error enviando email: {str(e)}")
+        print(f"❌ Tipo de error: {type(e).__name__}")
+        
+        # Debug de variables disponibles
+        print(f"🔍 Variables de entorno con 'SENDGRID':")
+        env_vars = [key for key in os.environ.keys() if 'SENDGRID' in key.upper()]
+        for var in env_vars:
+            print(f"   - {var}: [EXISTE]")
+        
+        if not env_vars:
+            print("   ❌ No se encontraron variables con 'SENDGRID' en el entorno")
+            print("   💡 Asegúrate de configurar SENDGRID_API_KEY en Railway")
+        
         return False
-
 
 def enviar_email_confirmacion(nombre, email, fecha, hora, turno_id):
     """Envía email de confirmación al reservar el turno usando SendGrid"""
