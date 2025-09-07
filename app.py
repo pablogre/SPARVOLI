@@ -248,7 +248,8 @@ def send_email_sendgrid(to_email, subject, html_content):
         sg = SendGridAPIClient(api_key=api_key)
         
         # Crear el email
-        from_email = Email("consultoriosparvoli@gmail.com")
+        #from_email = Email("consultoriosparvoli@gmail.com")
+        from_email = Email("noreply@drsparvoli.com")
         to_email_obj = To(to_email)
         content = Content("text/html", html_content)
         
