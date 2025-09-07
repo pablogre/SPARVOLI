@@ -892,7 +892,6 @@ def cancelar_turno_simple(turno_id):
                 o_social='', 
                 telefono='', 
                 email='',
-                token_cancelacion=NULL,
                 recordatorio_enviado=NULL
             WHERE id = %s
         """, (turno['id'],))
