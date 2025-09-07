@@ -260,7 +260,8 @@ def send_email_sendgrid(to_email, subject, html_content):
         
         print(f"✅ Email enviado exitosamente")
         print(f"📊 Status code: {response.status_code}")
-        print(f"📧 De: consultoriosparvoli@gmail.com → Para: {to_email}")
+        #print(f"📧 De: consultoriosparvoli@gmail.com → Para: {to_email}")
+        print(f"📧 De: noreply@drsparvoli.com → Para: {to_email}")
         print(f"📝 Asunto: {subject}")
         
         if response.status_code in [200, 201, 202]:
